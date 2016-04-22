@@ -1,10 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hash.h"
-#include <setjmp.h>
-#include <math.h>
-
-jmp_buf jumper;
 
 struct ListNode{
 	ElementType key;
@@ -13,30 +9,47 @@ struct ListNode{
 };
 
 struct HashTal{
-	int size;
+	unsigned int size;
 	Position* TheLists;
 };
 
-int NextPrime(int size){
+unsigned int NextPrime(unsigned int size){
+	unsigned int i;
+	int flag=0;
+
 	if(0 == size%2)
 		size++;
+	else{
+		for(;;size+=2){
+			for(i=3; i*i<=size; i+=2){
+				if(0==size%i){
+					break;
+				}
+				else{
+					flag=1;
+				}
+			}
+			if(flag)
+				break;
+		}
+		return size;
+	}
 	return size;
 }
 
-int hash(ElementType key, HashTable table){
-	int index;
-	int size;
+unsigned int hash(ElementType key, struct HashTal const *table){
+	unsigned int index;
+	unsigned int size;
 	size = table->size;
 	index = key%size;
 
 	return index;
 }
 
-Position Find(ElementType key, HashTable table){
+Position Find(ElementType key, struct HashTal const *table){
 	Position header, CurrentNode;
-	int index;
+	unsigned int index;
 
-	key = abs(key);
 	index = hash(key, table);
 	header = table->TheLists[index];
 	CurrentNode = header;
@@ -51,19 +64,19 @@ Position Find(ElementType key, HashTable table){
 	return CurrentNode;
 }
 
-void Insert(ElementType key, ElementType value, HashTable table){
-	int index;
+void Insert(ElementType key, ElementType value, struct HashTal const *table){
+	unsigned int index;
 	Position TargetNode, NewCell;
 	index = hash(key,table);
 
 	if(index > table->size)
-		return;
+		exit(0);
 
 	TargetNode = table->TheLists[index];
 	NewCell = malloc(sizeof(struct ListNode));
 
 	if(NULL == NewCell)
-		return;
+		exit(0);
 
 	NewCell->key = key;
 	NewCell->value = value;
@@ -72,16 +85,13 @@ void Insert(ElementType key, ElementType value, HashTable table){
 	TargetNode->next = NewCell;
 }
 
-HashTable InitializeTable(int size){
-	int i;
+HashTable InitializeTable(unsigned int size){
+	unsigned int i;
 	HashTable table = malloc(sizeof(struct HashTal));
 	
-	if(0==setjmp(jumper)){
-		if(NULL==table)
-			longjmp(jumper,1); 
-	}
-	else{
-		printf("malloc is failed");
+	if(NULL==table){
+		printf("malloc failed");
+		exit(0);
 	}
 
 	table->size = NextPrime(size);
@@ -90,14 +100,11 @@ HashTable InitializeTable(int size){
 	for(i=0; i<table->size; i++){
 		table->TheLists[i] = malloc(sizeof(struct ListNode));
 
-		if(0==setjmp(jumper)){
-			if(NULL==table->TheLists[i])
-				longjmp(jumper,1); 
+		if(NULL==table->TheLists[i]){
+			printf("malloc failed");
+			exit(0);
 		}
-		else{
-				printf("malloc is failed");
-				exit(0);
-			}
+	
 		table->TheLists[i]->next = NULL;
 	}
 
@@ -105,7 +112,7 @@ HashTable InitializeTable(int size){
 }
 
 void FreeTable(HashTable table){
-	int i;
+	unsigned int i;
 
 	if(NULL == table)
 		return;
